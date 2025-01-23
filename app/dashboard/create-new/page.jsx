@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import axios from "axios";
 import { useState } from "react";
+import { v4 as uuidv4 } from "uuid";
 import ContentDuration from "./_components/ContentDuration";
 import ContentStyle from "./_components/ContentStyle";
 import ContentTopic from "./_components/ContentTopic";
@@ -16,6 +17,7 @@ const CreateNew = () => {
   });
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [videoScript, setVideoScript] = useState();
 
   const onHandleInputChange = (fieldName, fieldValue) => {
     setFormData((prev) => ({
@@ -25,7 +27,8 @@ const CreateNew = () => {
   };
 
   const handleInput = async () => {
-    await GetVideoScript();
+    // await GetVideoScript();
+    await GetAudioScript();
   };
 
   const GetVideoScript = async () => {
@@ -62,7 +65,10 @@ const CreateNew = () => {
       const response = await axios.post("/api/get-video-script", {
         prompt,
       });
-      console.log("API Response:", response.data);
+
+      setVideoScript(response.data.result.video_script);
+
+      GetAudioScript(response.data.result.video_script);
 
       setProgress(100); // Set progress to 100% on success
     } catch (error) {
@@ -71,6 +77,34 @@ const CreateNew = () => {
       clearInterval(interval); // Ensure interval is cleared
       setLoading(false); // Reset loading state
     }
+  };
+
+  const GetAudioScript = async (audioTextData) => {
+    let audioText = "i am good and i am very much good i love you";
+
+    const id = uuidv4();
+    // audioTextData?.forEach((item) => {
+
+    //   audioText = audioText + item.contentText + " ";
+    // });
+    // console.log(audioText);
+    // const audio = googleTTS.getAllAudioUrls(audioText, {
+    //   lang: "en",
+    //   slow: false,
+    //   host: "https://translate.google.com",
+    //   splitPunct: ",.?",
+    // });
+    // console.log(audio);
+    setLoading(true);
+    await axios
+      .post("/api/generate-audio", {
+        text: audioText,
+        id: id,
+      })
+      .then((res) => {
+        console.log(res.data);
+      });
+    setLoading(false);
   };
 
   return (

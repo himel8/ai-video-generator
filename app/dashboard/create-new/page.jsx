@@ -1,8 +1,12 @@
 "use client";
 
+import { VideoDataContext } from "@/app/_context/VideoDataContext";
 import { Button } from "@/components/ui/button";
+import { db } from "@/configs/db";
+import { VideoData } from "@/configs/schema";
+import { useUser } from "@clerk/nextjs";
 import axios from "axios";
-import { useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import ContentDuration from "./_components/ContentDuration";
 import ContentStyle from "./_components/ContentStyle";
@@ -16,8 +20,13 @@ const CreateNew = () => {
     style: "",
   });
   const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
+
+  const [videoData, setVideoData] = useContext(VideoDataContext);
   const [videoScript, setVideoScript] = useState();
+  const [audioFile, setAudioFile] = useState();
+  const [captionText, setCaptionText] = useState();
+
+  const { user } = useUser();
 
   const onHandleInputChange = (fieldName, fieldValue) => {
     setFormData((prev) => ({
@@ -27,83 +36,92 @@ const CreateNew = () => {
   };
 
   const handleInput = async () => {
-    // await GetVideoScript();
-    await GetAudioScript();
+    await GetVideoScript();
   };
 
   const GetVideoScript = async () => {
     const { duration, topic, style } = formData;
-
-    // Validate required fields before making the request
-    if (!duration || !topic || !style) {
-      alert("Please fill in all fields before proceeding.");
-      return;
-    }
 
     const prompt = `
       Write a script to generate a ${duration} video on the topic: "${topic}" 
       story along with an AI image prompt in ${style} format for each scene. 
       Provide the result in JSON format with "imagePrompt" and "contentText" fields.
     `;
-    console.log("Generated Prompt:", prompt);
 
     setLoading(true);
-    setProgress(0);
-
-    // Simulate progress increment
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 99) {
-          clearInterval(interval); // Stop increment at 90%
-          return prev;
-        }
-        return prev + 5;
-      });
-    }, 300);
 
     try {
       const response = await axios.post("/api/get-video-script", {
         prompt,
       });
-
-      setVideoScript(response.data.result.video_script);
-
-      GetAudioScript(response.data.result.video_script);
-
-      setProgress(100); // Set progress to 100% on success
+      if (response.data.result.video_script) {
+        setVideoData((prev) => ({
+          ...prev,
+          videoScript: response.data.result.video_script,
+        }));
+        setVideoScript(response.data.result.video_script);
+        await GetAudioScript(response.data.result.video_script);
+      }
     } catch (error) {
       console.error("Error fetching video script:", error);
-    } finally {
-      clearInterval(interval); // Ensure interval is cleared
-      setLoading(false); // Reset loading state
     }
   };
 
   const GetAudioScript = async (audioTextData) => {
-    let audioText = "i am good and i am very much good i love you";
-
+    let audioText = "";
     const id = uuidv4();
-    // audioTextData?.forEach((item) => {
+    audioTextData?.forEach((item) => {
+      audioText = audioText + item.contentText + " ";
+    });
+    console.log(audioText);
+    const resp = await axios.post("/api/generate-audio", {
+      text: audioText,
+      id: id,
+    });
 
-    //   audioText = audioText + item.contentText + " ";
-    // });
-    // console.log(audioText);
-    // const audio = googleTTS.getAllAudioUrls(audioText, {
-    //   lang: "en",
-    //   slow: false,
-    //   host: "https://translate.google.com",
-    //   splitPunct: ",.?",
-    // });
-    // console.log(audio);
+    if (resp.data.result) {
+      setVideoData((prev) => ({
+        ...prev,
+        audioUrl: resp.data.result[0].url,
+      }));
+      setAudioFile(resp.data.result[0].url);
+      await GenerateAudioCaption(resp.data.result[0].url);
+    }
+  };
+
+  const GenerateAudioCaption = async (audioUrl) => {
+    const res = await axios.post("/api/generate-caption", { url: audioUrl });
+
+    if (res.data.result) {
+      setVideoData((prev) => ({
+        ...prev,
+        captionText: res.data.result,
+      }));
+      setCaptionText(res.data.result[0].url);
+      setLoading(false); // Reset loading state
+    }
+  };
+
+  useEffect(() => {
+    console.log(videoData);
+    if (Object?.keys(videoData)?.length == 3) {
+      SaveVideoData(videoData);
+    }
+  }, [videoData]);
+
+  const SaveVideoData = async (videoData) => {
     setLoading(true);
-    await axios
-      .post("/api/generate-audio", {
-        text: audioText,
-        id: id,
+    const result = await db
+      .insert(VideoData)
+      .values({
+        script: videoData?.videoScript,
+        audioFileUrl: videoData?.audioUrl,
+        captions: videoData?.captionText,
+        createdBy: user?.primaryEmailAddress?.emailAddress,
       })
-      .then((res) => {
-        console.log(res.data);
-      });
+      .returning({ id: VideoData?.id });
+
+    console.log(result);
     setLoading(false);
   };
 
@@ -121,7 +139,7 @@ const CreateNew = () => {
 
         {/* Conditional rendering for loading and progress */}
         {loading ? (
-          <CustomLoading loading={loading} progress={progress} />
+          <CustomLoading loading={loading} />
         ) : (
           <Button className="mt-6 w-full" onClick={handleInput}>
             Create Short Video

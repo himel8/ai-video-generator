@@ -8,6 +8,7 @@ import { useUser } from "@clerk/nextjs";
 import axios from "axios";
 import { useContext, useEffect, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
+import PlayerDialog from "../_component/PlayerDialog";
 import ContentDuration from "./_components/ContentDuration";
 import ContentStyle from "./_components/ContentStyle";
 import ContentTopic from "./_components/ContentTopic";
@@ -25,6 +26,8 @@ const CreateNew = () => {
   const [videoScript, setVideoScript] = useState();
   const [audioFile, setAudioFile] = useState();
   const [captionText, setCaptionText] = useState();
+  const [playVideo, setPlayVideo] = useState(true);
+  const [videoId, setVideoId] = useState(43);
 
   const { user } = useUser();
 
@@ -54,13 +57,13 @@ const CreateNew = () => {
       const response = await axios.post("/api/get-video-script", {
         prompt,
       });
-      if (response.data.result.video_script) {
+      if (response.data.result?.video_script) {
         setVideoData((prev) => ({
           ...prev,
-          videoScript: response.data.result.video_script,
+          videoScript: response.data.result?.video_script,
         }));
-        setVideoScript(response.data.result.video_script);
-        await GetAudioScript(response.data.result.video_script);
+        setVideoScript(response.data.result?.video_script);
+        await GetAudioScript(response.data.result?.video_script);
       }
     } catch (error) {
       console.error("Error fetching video script:", error);
@@ -78,13 +81,13 @@ const CreateNew = () => {
       text: audioText,
       id: id,
     });
-
+    console.log(resp);
     if (resp.data.result) {
       setVideoData((prev) => ({
         ...prev,
-        audioUrl: resp.data.result[0].url,
+        audioUrl: resp.data?.cloudinaryUrl,
       }));
-      setAudioFile(resp.data.result[0].url);
+      setAudioFile(resp.data?.cloudinaryUrl);
       await GenerateAudioCaption(resp.data.result[0].url);
     }
   };
@@ -120,7 +123,8 @@ const CreateNew = () => {
         createdBy: user?.primaryEmailAddress?.emailAddress,
       })
       .returning({ id: VideoData?.id });
-
+    setVideoId(result);
+    setPlayVideo(true);
     console.log(result);
     setLoading(false);
   };
@@ -145,6 +149,7 @@ const CreateNew = () => {
             Create Short Video
           </Button>
         )}
+        <PlayerDialog playVideo={playVideo} videoId={videoId} />
       </div>
     </div>
   );

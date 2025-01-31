@@ -7,12 +7,12 @@ import { getStorage } from "firebase/storage";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: "tooblio-d099c.firebaseapp.com",
-  projectId: "tooblio-d099c",
-  storageBucket: "tooblio-d099c.firebasestorage.app",
-  messagingSenderId: "223172711617",
-  appId: "1:223172711617:web:de7f38394f987eddcd3040",
+  apiKey: "AIzaSyD-zwlHZ8_kYcwLKE9SSchwk-CkdRH87E8",
+  authDomain: "ai-video-ecc4b.firebaseapp.com",
+  projectId: "ai-video-ecc4b",
+  storageBucket: "ai-video-ecc4b.firebasestorage.app",
+  messagingSenderId: "487924584209",
+  appId: "1:487924584209:web:7fedff18ccc112f841c6b0",
 };
 
 // Initialize Firebase
